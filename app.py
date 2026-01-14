@@ -18,6 +18,10 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 def index():
     return render_template("index.html")
 
+@app.route("/app.html")
+def render_app():
+    return render_template("app.html")
+
 @app.route("/upload_resume", methods=["POST"])
 def upload_resume():
     try:
