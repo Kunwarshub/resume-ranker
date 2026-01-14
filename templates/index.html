@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Chatbot</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .chat-container {
+      background: white;
+      width: 90%;
+      max-width: 600px;
+      height: 80vh;
+      display: flex;
+      flex-direction: column;
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      text-align: center;
+      background: #4e54c8;
+      color: white;
+      padding: 1rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .chat-box {
+      flex-grow: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      background: #f9fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      padding: 0.8rem 1rem;
+      border-radius: 15px;
+      max-width: 80%;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .user-message {
+      background: #cfe3ff;
+      align-self: flex-end;
+      border-bottom-right-radius: 3px;
+    }
+
+    .bot-message {
+      background: #e9f8f2;
+      align-self: flex-start;
+      border-bottom-left-radius: 3px;
+    }
+
+    .bottom-bar {
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid #ddd;
+      padding: 1rem;
+      background: white;
+    }
+
+    .upload-section {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .upload-section input[type="file"] {
+      font-size: 0.9rem;
+    }
+
+    .upload-section button {
+      background: #4e54c8;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .upload-section button:hover {
+      background: #3e43a0;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .input-row input {
+      flex-grow: 1;
+      padding: 0.6rem 0.8rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+      font-size: 0.95rem;
+    }
+
+    .input-row button {
+      background: #4e54c8;
+      color: white;
+      border: none;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .input-row button:hover {
+      background: #3e43a0;
+    }
+
+    .loading {
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+      animation: blink 1.2s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="header">💼 Resume Chatbot</div>
+    <div id="chat-box" class="chat-box">
+      <div class="bot-message message">Hi there! Upload your resume and ask me anything about it 📄</div>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="upload-section">
+        <input type="file" id="resumeFile" accept=".pdf">
+        <button id="uploadBtn">Upload Resume</button>
+      </div>
+
+      <div class="input-row">
+        <input id="questionInput" type="text" placeholder="Ask something about your resume...">
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatBox = document.getElementById('chat-box');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const resumeFile = document.getElementById('resumeFile');
+    const sendBtn = document.getElementById('sendBtn');
+    const questionInput = document.getElementById('questionInput');
+
+    function appendMessage(content, sender) {
+      const msg = document.createElement('div');
+      msg.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
+      msg.textContent = content;
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    uploadBtn.addEventListener('click', async () => {
+      if (!resumeFile.files[0]) {
+        alert('Please select a PDF first!');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('resume', resumeFile.files[0]);
+      appendMessage('Uploading your resume...', 'bot');
+
+      try {
+        const res = await fetch('/upload_resume', { method: 'POST', body: formData });
+        const data = await res.json();
+        appendMessage(data.message, 'bot');
+      } catch (err) {
+        appendMessage('Upload failed. Please try again.', 'bot');
+      }
+    });
+
+    sendBtn.addEventListener('click', async () => {
+      const question = questionInput.value.trim();
+      if (!question) return;
+      appendMessage(question, 'user');
+      questionInput.value = '';
+
+      const loadingMsg = document.createElement('div');
+      loadingMsg.classList.add('loading');
+      loadingMsg.textContent = 'Thinking...';
+      chatBox.appendChild(loadingMsg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      try {
+        const res = await fetch('/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question })
+        });
+        const data = await res.json();
+        loadingMsg.remove();
+
+        if (data.success) {
+          appendMessage(data.answer, 'bot');
+        } else {
+          appendMessage(data.message || 'Something went wrong.', 'bot');
+        }
+      } catch (err) {
+        loadingMsg.remove();
+        appendMessage('Error contacting the server.', 'bot');
+      }
+    });
+  </script>
+</body>
+</html>
