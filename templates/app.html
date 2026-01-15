@@ -264,8 +264,8 @@ button.send:disabled {
     <input type="file" id="fileInput" accept=".pdf" hidden>
   </label>
 
-  <input id="input" placeholder="Ask something about your resume..." disabled>
-  <button id="sendBtn" class="send" disabled>Send</button>
+  <input id="input" placeholder="Ask something about your resume...">
+  <button id="sendBtn" class="send">Send</button>
 </div>
 
 
@@ -276,6 +276,15 @@ const sendBtn = document.getElementById('sendBtn');
 const fileInput = document.getElementById('fileInput');
 const resumeStatus = document.getElementById('resumeStatus');
 const suggestions = document.getElementById('suggestions');
+
+function disableSuggestions(disabled) {
+  document.querySelectorAll('#suggestions button')
+    .forEach(btn => btn.disabled = disabled);
+}
+
+// Initially
+disableSuggestions(true);
+
 
 function addMessage(text, type) {
   const msg = document.createElement('div');
@@ -320,8 +329,8 @@ fileInput.addEventListener('change', async () => {
 
   resumeStatus.classList.remove('hidden');
   resumeStatus.innerHTML = `📄 Attached: <strong>${file.name}</strong>`;
-  input.disabled = false;
-  sendBtn.disabled = false;
+  // After upload success
+  disableSuggestions(false);
 
   addMessage(data.message || 'Resume uploaded successfully.', 'bot');
 });
@@ -331,7 +340,6 @@ async function send() {
   if (!q) return;
 
   suggestions.classList.add('hidden');
-
   addMessage(q, 'user');
   input.value = '';
 
@@ -346,8 +354,21 @@ async function send() {
   const data = await res.json();
   hideTyping();
 
-  addMessage(data.answer || 'Something went wrong.', 'bot');
+  // ✅ Handle missing resume case
+  if (!data.success) {
+    addMessage(data.message || 'Please upload your resume first.', 'bot');
+    return;
+  }
+
+  addMessage(data.answer, 'bot');
 }
+
+sendBtn.addEventListener('click', send);
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') send();
+});
+
 </script>
 
 </body>
